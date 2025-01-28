@@ -32,112 +32,172 @@
         button:hover {
             background-color: #0056b3;
         }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Grade Validator</h2>
         <label for="year">Select Your Year:</label>
-        <select id="year">
-            <option value="CP">CP (1st & 2nd Year - Tronc Commun)</option>
+        <select id="year" onchange="updateSpecializationVisibility()">
+            <option value="CP1">CP1 (1st Year)</option>
+            <option value="CP2">CP2 (2nd Year)</option>
             <option value="CGE3">CGE3 (3rd Year)</option>
             <option value="CGE4">CGE4 (4th Year)</option>
             <option value="CGE5">CGE5 (5th Year)</option>
         </select>
-        
+
         <label for="semester">Select Semester:</label>
         <select id="semester">
             <option value="Semester 1">Semester 1</option>
             <option value="Semester 2">Semester 2</option>
         </select>
-        
-        <div id="specialization-section" style="display:none;">
-            <label for="specialization">Select Specialization (CGE3 only):</label>
-            <select id="specialization">
+
+        <div id="specialization-section" class="hidden">
+            <label for="specialization">Select Specialization:</label>
+            <select id="specialization" onchange="updateSousFiliereVisibility()">
                 <option value="Gestion">Gestion</option>
                 <option value="Commerce">Commerce</option>
             </select>
         </div>
-        
+
+        <div id="sous-filiere-section" class="hidden">
+            <label for="sous-filiere">Select Sous-Filière:</label>
+            <select id="sous-filiere">
+                <!-- Options will be dynamically populated -->
+            </select>
+        </div>
+
         <button onclick="getModules()">Next</button>
-        
-        <div id="modules-section" style="display:none;">
+
+        <div id="modules-section" class="hidden">
             <h3>Enter Your Grades</h3>
             <div id="modules"></div>
             <button onclick="submitGrades()">Validate</button>
         </div>
-        
-        <div id="result-section" style="display:none;">
+
+        <div id="result-section" class="hidden">
             <h3>Validation Results</h3>
             <p id="result"></p>
         </div>
     </div>
 
     <script>
-        function getModules() {
-            let year = document.getElementById("year").value;
-            let semester = document.getElementById("semester").value;
-            let specialization = document.getElementById("specialization").value;
-            
-            if (year === "CGE3") {
-                document.getElementById("specialization-section").style.display = "block";
-                specialization = document.getElementById("specialization").value;
+        function updateSpecializationVisibility() {
+            const year = document.getElementById("year").value;
+            const specializationSection = document.getElementById("specialization-section");
+            const sousFiliereSection = document.getElementById("sous-filiere-section");
+
+            if (year === "CGE4" || year === "CGE5") {
+                specializationSection.classList.remove("hidden");
             } else {
-                specialization = null;
+                specializationSection.classList.add("hidden");
+                sousFiliereSection.classList.add("hidden");
+            }
+        }
+
+        function updateSousFiliereVisibility() {
+            const specialization = document.getElementById("specialization").value;
+            const sousFiliereSection = document.getElementById("sous-filiere-section");
+            const sousFiliereSelect = document.getElementById("sous-filiere");
+
+            const sousFilieres = {
+                "Gestion": ["Finance", "Audit", "HR", "Supply Chain"],
+                "Commerce": ["International Trade", "Digital Marketing", "Retail"]
+            };
+
+            sousFiliereSelect.innerHTML = ""; // Clear existing options
+
+            if (specialization in sousFilieres) {
+                sousFilieres[specialization].forEach(filiere => {
+                    const option = document.createElement("option");
+                    option.value = filiere;
+                    option.textContent = filiere;
+                    sousFiliereSelect.appendChild(option);
+                });
+                sousFiliereSection.classList.remove("hidden");
+            } else {
+                sousFiliereSection.classList.add("hidden");
+            }
+        }
+
+        function getModules() {
+            const year = document.getElementById("year").value;
+            const semester = document.getElementById("semester").value;
+            const specialization = document.getElementById("specialization").value;
+            const sousFiliere = document.getElementById("sous-filiere").value;
+
+            const body = { year, semester };
+            if (year === "CGE4" || year === "CGE5") {
+                body.specialization = specialization;
+                body.sous_filiere = sousFiliere;
             }
 
             fetch("https://grade-validator-backend.onrender.com/modules", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ year, semester, specialization })
+                body: JSON.stringify(body)
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                let modulesDiv = document.getElementById("modules");
-                modulesDiv.innerHTML = "";
-                data.modules.forEach(module => {
-                    modulesDiv.innerHTML += `<label>${module}</label>
-                        <input type='number' id='cc-${module}' placeholder='CC Grade (0-20)' min='0' max='20'>
-                        <input type='number' id='exam-${module}' placeholder='Exam Grade (0-20)' min='0' max='20'>`;
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+
+                    const modulesDiv = document.getElementById("modules");
+                    modulesDiv.innerHTML = "";
+                    data.modules.forEach(module => {
+                        modulesDiv.innerHTML += `<label>${module}</label>
+                            <input type='number' id='cc-${module}' placeholder='CC Grade (0-20)' min='0' max='20'>
+                            <input type='number' id='exam-${module}' placeholder='Exam Grade (0-20)' min='0' max='20'>
+                            <label><input type='checkbox' id='rattrapage-${module}'> Rattrapage Passed</label>`;
+                    });
+
+                    document.getElementById("modules-section").classList.remove("hidden");
                 });
-                document.getElementById("modules-section").style.display = "block";
-            });
         }
 
         function submitGrades() {
-            let year = document.getElementById("year").value;
-            let semester = document.getElementById("semester").value;
-            let specialization = document.getElementById("specialization").value;
-            
-            let modules = document.querySelectorAll("#modules label");
-            let grades = {};
+            const year = document.getElementById("year").value;
+            const semester = document.getElementById("semester").value;
+            const specialization = document.getElementById("specialization").value;
+            const sousFiliere = document.getElementById("sous-filiere").value;
+
+            const modules = document.querySelectorAll("#modules label");
+            const grades = {};
             modules.forEach(moduleLabel => {
-                let moduleName = moduleLabel.innerText;
-                let cc = document.getElementById(`cc-${moduleName}`).value;
-                let exam = document.getElementById(`exam-${moduleName}`).value;
-                grades[moduleName] = { cc: parseFloat(cc), exam: parseFloat(exam) };
+                const moduleName = moduleLabel.innerText;
+                const cc = document.getElementById(`cc-${moduleName}`).value;
+                const exam = document.getElementById(`exam-${moduleName}`).value;
+                const rattrapage = document.getElementById(`rattrapage-${moduleName}`).checked;
+                grades[moduleName] = { cc: parseFloat(cc), exam: parseFloat(exam), rattrapage };
             });
+
+            const body = { year, semester, grades };
+            if (year === "CGE4" || year === "CGE5") {
+                body.specialization = specialization;
+                body.sous_filiere = sousFiliere;
+            }
 
             fetch("https://grade-validator-backend.onrender.com/validate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ year, semester, specialization, grades })
+                body: JSON.stringify(body)
             })
-            .then(response => response.json())
-            .then(data => {
-                let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = `<p><strong>Validated Modules:</strong> ${data.validated_modules.join(", ")}</p>
-                    <p><strong>Compensatable Modules:</strong> ${data.compensatable_modules.join(", ")}</p>
-                    <p><strong>Failed Modules:</strong> ${data.failed_modules.join(", ")}</p>
-                    <p><strong>Average:</strong> ${data.average.toFixed(2)}</p>
-                    <p><strong>Semester Validated:</strong> ${data.semester_validated ? "Yes ✅" : "No ❌"}</p>
-                    <p><strong>Honors:</strong> ${data.honors || "None"}</p>`;
-                document.getElementById("result-section").style.display = "block";
-            });
+                .then(response => response.json())
+                .then(data => {
+                    const resultDiv = document.getElementById("result");
+                    resultDiv.innerHTML = `<p><strong>Validated Modules:</strong> ${data.validated_modules.join(", ")}</p>
+                        <p><strong>Compensatable Modules:</strong> ${data.compensatable_modules.join(", ")}</p>
+                        <p><strong>Failed Modules:</strong> ${data.failed_modules.join(", ")}</p>
+                        <p><strong>Average:</strong> ${data.average.toFixed(2)}</p>
+                        <p><strong>Semester Validated:</strong> ${data.semester_validated ? "Yes ✅" : "No ❌"}</p>
+                        <p><strong>Honors:</strong> ${data.honors || "None"}</p>`;
+                    document.getElementById("result-section").classList.remove("hidden");
+                });
         }
     </script>
 </body>

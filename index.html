@@ -75,6 +75,9 @@
         <div id="modules-section" class="hidden">
             <h3>Enter Your Grades</h3>
             <div id="modules"></div>
+            <label>
+                <input type="checkbox" id="rattrapage-passed"> Rattrapage Passed
+            </label>
             <button onclick="submitGrades()">Validate</button>
         </div>
 
@@ -105,7 +108,7 @@
 
             const sousFilieres = {
                 "Gestion": ["Finance", "Audit", "HR", "Supply Chain"],
-                "Commerce": ["International Trade", "Digital Marketing", "Retail"]
+                "Commerce": ["International Trade", "Digital Marketing", "Marketing"]
             };
 
             sousFiliereSelect.innerHTML = ""; // Clear existing options
@@ -152,8 +155,7 @@
                     data.modules.forEach(module => {
                         modulesDiv.innerHTML += `<label>${module}</label>
                             <input type='number' id='cc-${module}' placeholder='CC Grade (0-20)' min='0' max='20'>
-                            <input type='number' id='exam-${module}' placeholder='Exam Grade (0-20)' min='0' max='20'>
-                            <label><input type='checkbox' id='rattrapage-${module}'> Rattrapage Passed</label>`;
+                            <input type='number' id='exam-${module}' placeholder='Exam Grade (0-20)' min='0' max='20'>`;
                     });
 
                     document.getElementById("modules-section").classList.remove("hidden");
@@ -165,6 +167,7 @@
             const semester = document.getElementById("semester").value;
             const specialization = document.getElementById("specialization").value;
             const sousFiliere = document.getElementById("sous-filiere").value;
+            const rattrapagePassed = document.getElementById("rattrapage-passed").checked;
 
             const modules = document.querySelectorAll("#modules label");
             const grades = {};
@@ -172,11 +175,10 @@
                 const moduleName = moduleLabel.innerText;
                 const cc = document.getElementById(`cc-${moduleName}`).value;
                 const exam = document.getElementById(`exam-${moduleName}`).value;
-                const rattrapage = document.getElementById(`rattrapage-${moduleName}`).checked;
-                grades[moduleName] = { cc: parseFloat(cc), exam: parseFloat(exam), rattrapage };
+                grades[moduleName] = { cc: parseFloat(cc), exam: parseFloat(exam) };
             });
 
-            const body = { year, semester, grades };
+            const body = { year, semester, grades, rattrapage_passed: rattrapagePassed };
             if (year === "CGE4" || year === "CGE5") {
                 body.specialization = specialization;
                 body.sous_filiere = sousFiliere;
@@ -194,8 +196,7 @@
                         <p><strong>Compensatable Modules:</strong> ${data.compensatable_modules.join(", ")}</p>
                         <p><strong>Failed Modules:</strong> ${data.failed_modules.join(", ")}</p>
                         <p><strong>Average:</strong> ${data.average.toFixed(2)}</p>
-                        <p><strong>Semester Validated:</strong> ${data.semester_validated ? "Yes ✅" : "No ❌"}</p>
-                        <p><strong>Honors:</strong> ${data.honors || "None"}</p>`;
+                        <p><strong>Semester Validated:</strong> ${data.semester_validated ? "Yes ✅" : "No ❌"}</p>`;
                     document.getElementById("result-section").classList.remove("hidden");
                 });
         }
